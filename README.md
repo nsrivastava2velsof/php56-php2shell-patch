@@ -87,3 +87,11 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 - 7.4 backport: https://github.com/php/php-src/commit/712e60f9edfd
 - Sury 5.6 source: https://packages.sury.org/php/pool/main/p/php5.6/ (`php5.6_5.6.40-104…debian.tar.xz` and `-105…debian.tar.xz`)
 - Other 5.6 ports reviewed: https://github.com/Anton-Barinov/php2shell-patches. Its `php-5.6-community-backport.patch` and `-enhanced-*` patches omit the SAPI, `zend_llist` and EG resets. The enhanced variant also does *not* force-disable upload progress, despite its comment saying it does.
+
+## License
+
+`tests/verify.sh` and this README are MIT (see `LICENSE`). The third-party files keep their own licenses:
+
+- `patches/php-5.6.40-php2shell-CVE-2026-109618-109619.patch` comes from Sury's `php5.6` Debian packaging. Its `debian/*` files are Expat (MIT), © Ondřej Surý. The code it patches is PHP, under the PHP License 3.01.
+- `patches/reference-php-7.4-official-backport.diff` comes from php-src and is under the PHP License 3.01.
+- `packaging/remi-php56-php-5.6.40-47.1.spec.diff` modifies Remi Collet's `php56-php` spec, which is MIT.
