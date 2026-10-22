@@ -50,7 +50,7 @@ The minimal 7.4 backport, and the 5.6 port based on it, take the blunt route:
 
 ## Verification done
 
-Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0261 (`base`), and Remi `php56-php-5.6.40-47` SRPM (95 patches) plus 0261. All were configured with `--disable-all --enable-session --enable-cli --enable-cgi`.
+Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0261 (`base`), and Remi `php56-php-5.6.40-47` SRPM (all 94 `%patch -P` entries except Patch301, which only applies with system libpcre < 8.34) plus 0261. All were configured with `--disable-all --enable-session --enable-cli --enable-cgi`.
 
 - `tests/verify.sh`: `base` fails all 3 checks, while `patched` and `Remi+0261` pass all 3.
 - phpt suite (`tests/basic ext/session/tests tests/lang Zend/tests main`, 2141 tests, run serially), patched compared with base. The new failures are 8× `ext/session/tests/rfc1867*.phpt` (upload progress disabled by design) and `tests/lang/bug45392.phpt` (OOM output no longer flushed, by design). Six other session tests also differed (2 newly failing, 4 newly passing), but all 6 passed on both builds in three reruns, so they are flaky (they depend on time and session files).
@@ -59,14 +59,17 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 ## Applying it
 
 - **Debian/Ubuntu on Sury packages:** run `apt install --only-upgrade 'php5.6*'` to get `5.6.40-104` or later, then restart php5.6-fpm and Apache.
-- **RHEL/CentOS on Remi `php56` (SCL):** as of 2026-10-22, Remi's latest is still `5.6.40-47` (unfixed). Rebuild the SRPM with this patch:
+- **RHEL/CentOS on Remi `php56` (SCL):** as of 2026-10-22, Remi's latest is still `5.6.40-47` (unfixed). Rebuild the SRPM with this patch. `packaging/remi-php56-php-5.6.40-47.1.spec.diff` is the exact spec change: it adds `Patch400`, adds `%patch -P400` after the security patches (outside any `%if`), and sets `Release: 47.1`. Remi's spec uses `%patch -P<n>` syntax, so don't use `%patch<n>`. Then:
   ```
-  # php.spec
-  Patch400: php-5.6.40-php2shell-CVE-2026-109618-109619.patch
-  %patch400 -p1 -b .php2shell
-  Release: 47.1%{?dist}...   # bump
+  rpm2cpio php56-php-5.6.40-47.remi.src.rpm | cpio -idm   # into SOURCES/, spec into SPECS/
+  patch SPECS/php.spec < packaging/remi-php56-php-5.6.40-47.1.spec.diff
+  cp patches/php-5.6.40-php2shell-*.patch SOURCES/
+  # in an EL container matching the target, with epel + remi-release + php56-build:
+  dnf builddep --define 'dist .el8.remi' SPECS/php.spec
+  rpmbuild -ba --define 'dist .el8.remi' --define 'runselftest 0' SPECS/php.spec
   ```
-  Build with mock or in an EL container matching the target, install, restart every FPM pool, then run `tests/verify.sh` against the installed `php` and `php-cgi`. The alternatives are a vendor build (TuxCare ELS; GetPageSpeed for EL7), or waiting for Remi.
+  Install the result. On EL8 the package does **not** restart FPM (Remi's `%postun ... with_restart` only applies to `rhel < 8`), so the old binary keeps running until you `systemctl reload` every FPM master yourself; some hosts run more than one. Then run `tests/verify.sh` against the installed `php` and `php-cgi`.
+- FPM reload caveat: `systemctl reload` (USR2) re-execs the php-fpm binary from disk, which is how the new code gets loaded. If `process_control_timeout` is unset (0), the reload sends SIGQUIT and then SIGTERM right away. Child SIGTERM is `SIG_DFL`, so in-flight requests are killed (`fpm_process_ctl.c` `fpm_pctl_action_next`, `fpm_signals.c`). The timeout used is the one the *running* master loaded. Setting `process_control_timeout = 10s` therefore makes only the *next* reload after it is loaded graceful. The alternatives are a vendor build (TuxCare ELS; GetPageSpeed for EL7), or waiting for Remi.
 - **Until patched (config mitigation, partial):** set `php_admin_flag[session.upload_progress.enabled] = off` in every FPM pool, or set it in php.ini. Don't rely on `ini_set` or `.user.ini`. Remove any `PHP_VALUE`/`PHP_ADMIN_VALUE` from nginx and Apache that triggers a warning, then restart all workers.
 
 ## Sources

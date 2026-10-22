@@ -1,0 +1,38 @@
+--- a/php.spec (remi php56-php-5.6.40-47)
++++ b/php.spec
+@@ -141,7 +141,7 @@
+ Summary: PHP scripting language for creating dynamic web sites
+ Name: %{?scl_prefix}php
+ Version: 5.6.40
+-Release: 47%{?dist}
++Release: 47.1%{?dist}
+ # All files licensed under PHP version 3.01, except
+ # Zend is licensed under Zend
+ # TSRM is licensed under BSD
+@@ -286,6 +286,7 @@
+ Patch301: php-5.6.0-oldpcre.patch
+ # Renew openssl certs
+ Patch302: php-openssl-cert.patch
++Patch400: php-5.6.40-php2shell-CVE-2026-109618-109619.patch
+ 
+ # WIP
+ 
+@@ -1088,6 +1089,7 @@
+ %patch -P278 -p1 -b .cve7262
+ %patch -P279 -p1 -b .cve6735
+ %patch -P280 -p1 -b .gh22187
++%patch -P400 -p1 -b .php2shell
+ 
+ # Fixes for tests
+ %patch -P300 -p1 -b .datetests
+@@ -2038,6 +2040,10 @@
+ 
+ 
+ %changelog
++* Thu Oct 22 2026 Velsof <noreply@velsof.com> - 5.6.40-47.1
++- Fix CVE-2026-109618 (GHSA-w8hw-w9fx-j79w) and CVE-2026-109619
++  (GHSA-6wmf-4rv5-p3rp) PHP2Shell: Debian/Sury 5.6 port of the 7.4 fix
++
+ * Thu Jul  2 2026 Remi Collet <remi@remirepo.net> - 5.6.40-47
+ - Fix Memory corruption in openssl_encrypt with AES-WRAP-PAD
+ 
