@@ -2,7 +2,7 @@
 
 Verified on 2026-10-22. In short, upstream fixed only 8.2 to 8.5, and the PHP security team published "minimal" source backports for 7.4, 8.0 and 8.1. A 5.6 port of the 7.4 backport already exists: Debian/Sury patch `0261-Avoid-state-corruption-via-bailout`, written by Arnaud Le Blanc, a PHP core developer. We use that port and do not write a new one.
 
-- `patches/php-5.6.40-php2shell-CVE-2026-109618-109619.patch`: the 5.6 port, verbatim from `php5.6_5.6.40-104` on packages.sury.org.
+- `patches/php-5.6.40-php2shell-CVE-2026-109618-109619.patch`: the 5.6 port, verbatim from `php5.6_5.6.40-105` on packages.sury.org. Its code is identical to the -104 copy; -105 only corrected the header note about `max_multipart_body_parts`.
 - `patches/reference-php-7.4-official-backport.diff`: the official 7.4 backport (php-src branch `PHP-7.4-CVE-2026-109618-109619`, commit `712e60f9edfd`), included for review.
 - `tests/verify.sh <php> <php-cgi>`: three behavioural checks. An unpatched build fails all three and a patched build passes all three.
 
@@ -35,7 +35,7 @@ The minimal 7.4 backport, and the 5.6 port based on it, take the blunt route:
 | `EG(objects_store)` reset | ✓ | n/a: 5.6's `zend_objects_store_destroy()` already NULLs `object_buckets` | |
 | `zend_llist_destroy` NULLs head and tail | ✓ | ✓ | |
 | VM concat overflow checks, `HT_HASH_RESET` <64 | ✓ | n/a: no such code in 5.6 | |
-| New ini `max_multipart_body_parts` | ✓ | **✗, missing.** The patch header says "code is already there", but that's wrong: neither vanilla 5.6.40 nor Sury's or Remi's trees contain it | DoS hardening only. With OOM now ending in `_exit`, an unbounded part count kills a worker. It is not an RCE vector. |
+| New ini `max_multipart_body_parts` | ✓ | Not in this patch; it comes from the separate CVE-2023-0662 backport. Remi -47 already has it (`Patch262: php-cve-2023-0662.patch`). Sury added it in -105 (patches 0262/0263); -104 lacked it, even though the -104 0261 header said the code was "already there". Vanilla 5.6.40 lacks it | DoS hardening only. With OOM now ending in `_exit`, an unbounded part count kills a worker. It is not an RCE vector. Make sure your build has the CVE-2023-0662 backport too. |
 
 ## Remaining risk with the 5.6 port (known, accepted)
 
@@ -58,14 +58,15 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 
 ## Applying it
 
-- **Debian/Ubuntu on Sury packages:** run `apt install --only-upgrade 'php5.6*'` to get `5.6.40-104` or later, then restart php5.6-fpm and Apache.
+- **Debian/Ubuntu on Sury packages:** run `apt install --only-upgrade 'php5.6*'` to get `5.6.40-105` or later (-104 has this fix, and -105 adds `max_multipart_body_parts`), then restart php5.6-fpm and Apache. Upgrading from an older build also brings in Sury's -96 systemd hardening of `php5.6-fpm.service` (`ProtectSystem=full`, so FPM can no longer write to `/usr`, `/boot` or `/etc`) and the -91 "secure DNS telemetry". The telemetry sends one encrypted DNS query to `telemetry.sury.org` when FPM or mod_php starts; the -105 binary contains that hostname, and there is no runtime opt-out.
 - **RHEL/CentOS on Remi `php56` (SCL):** as of 2026-10-22, Remi's latest is still `5.6.40-47` (unfixed). Rebuild the SRPM with this patch. `packaging/remi-php56-php-5.6.40-47.1.spec.diff` is the exact spec change: it adds `Patch400`, adds `%patch -P400` after the security patches (outside any `%if`), and sets `Release: 47.1`. Remi's spec uses `%patch -P<n>` syntax, so don't use `%patch<n>`. Then:
   ```
   rpm2cpio php56-php-5.6.40-47.remi.src.rpm | cpio -idm   # into SOURCES/, spec into SPECS/
   patch SPECS/php.spec < packaging/remi-php56-php-5.6.40-47.1.spec.diff
   cp patches/php-5.6.40-php2shell-*.patch SOURCES/
   # in an EL container matching the target, with epel + remi-release + php56-build:
-  dnf builddep --define 'dist .el8.remi' SPECS/php.spec
+  # --enablerepo=remi: libicu69-devel and gd3php-devel are not in remi-safe
+  dnf builddep --enablerepo=remi --define 'dist .el8.remi' SPECS/php.spec
   rpmbuild -ba --define 'dist .el8.remi' --define 'runselftest 0' SPECS/php.spec
   ```
   Install the result. On EL8 the package does **not** restart FPM (Remi's `%postun ... with_restart` only applies to `rhel < 8`), so the old binary keeps running until you `systemctl reload` every FPM master yourself; some hosts run more than one. Then run `tests/verify.sh` against the installed `php` and `php-cgi`.
@@ -78,5 +79,5 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 - https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp
 - 8.2.35 fix: https://github.com/php/php-src/commit/01a40e89fbfc
 - 7.4 backport: https://github.com/php/php-src/commit/712e60f9edfd
-- Sury 5.6 source: https://packages.sury.org/php/pool/main/p/php5.6/ (`php5.6_5.6.40-104…debian.tar.xz`)
+- Sury 5.6 source: https://packages.sury.org/php/pool/main/p/php5.6/ (`php5.6_5.6.40-104…debian.tar.xz` and `-105…debian.tar.xz`)
 - Other 5.6 ports reviewed: https://github.com/Anton-Barinov/php2shell-patches. Its `php-5.6-community-backport.patch` and `-enhanced-*` patches omit the SAPI, `zend_llist` and EG resets. The enhanced variant also does *not* force-disable upload progress, despite its comment saying it does.
