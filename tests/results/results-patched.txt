@@ -1,0 +1,17 @@
+package: php56-php-fpm-5.6.40-47.1.el8.remi.x86_64
+cgi: oom exits without running shutdown: PASS
+cgi: multipart junk headers discarded: PASS
+cgi: session upload progress disabled: PASS
+fpm: oom shutdown function: NOT-RUN
+fpm: oom worker exit(1): YES
+fpm: request after oom: OK
+fpm: upload progress: NO-PROGRESS
+fpm: plain request: OK
+fpm: 4MB alloc under limit: ALLOC-OK SHUTDOWN-RAN
+fpm: GET nested arrays: array (  0 =>   array (    'a' =>     array (      'b' =>       array (        'c' => '1',        'd' => '2',      ),    ),    'x' =>     array (      0 => '3',      1 => '4',    ),    's' => 't',  ),  1 =>   array (  ),  2 =>   array (  ),)
+fpm: POST urlencoded arrays: array (  0 =>   array (  ),  1 =>   array (    'p' =>     array (      'q' =>       array (        'r' => '1',        0 => '2',      ),      'z' => '3',    ),    'list' =>     array (      0 => 'a',      1 => 'b',    ),    'plain' => 'v',  ),  2 =>   array (  ),)
+fpm: multipart fields + uploads: array (  0 =>   array (  ),  1 =>   array (    'title' => 'hello',    'tags' =>     array (      'k' =>       array (        0 => 't1',        1 => 't2',      ),    ),  ),  2 =>   array (    'photo' =>     array (      'name' => 'a.png',      'type' => 'image/png',      'tmp_name' => '<a.png-md5-matches>',      'error' => 0,      'size' => 70000,    ),    'docs' =>     array (      'name' =>       array (        0 => 'b.txt',        1 => '',      ),      'type' =>       array (        0 => 'text/plain',        1 => '',      ),      'tmp_name' =>       array (        0 => 'c855014a7bcf8d02b795b7eb0ef7cc0a',        1 => '',      ),      'error' =>       array (        0 => 0,        1 => 4,      ),      'size' =>       array (        0 => 11,        1 => 0,      ),    ),  ),)
+fpm: session persists: N=1 N=2 N=3
+Tests skipped   :   49 (  1.9%) --------
+Tests failed    :   10 (  0.4%) (  0.4%)
+Tests passed    : 2504 ( 97.4%) ( 99.2%)

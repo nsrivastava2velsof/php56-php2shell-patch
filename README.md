@@ -41,6 +41,9 @@ The minimal 7.4 backport, and the 5.6 port based on it, take the blunt route:
 
 - `zend_error(E_ERROR, "String size overflow")` and similar calls outside the allocator still bail out (in `zend_API.c`, `ext/standard/string.c`, `math.c`, `url.c` and `php_smart_str.h`). The minimal 7.4 fix also leaves these. They need a string larger than 2 GB, so with a finite `memory_limit` the allocator OOMs (and `_exit`s) first.
 - The "other error/exception/object/extension state" family in GHSA-6wmf is fixed only by the full 8.x patch. It needs an app-specific producer and consumer.
+- **5.6 only:** without `--enable-zend-signals`, which neither Remi nor the default configure use, a timeout raises `E_ERROR` (a longjmp) from inside the SIGPROF handler (`zend_timeout`, `Zend/zend_execute_API.c`). That is the same bug class with a different trigger, and no 5.6 port fixes it; PHP 7 avoids it by deferring timeouts. During request startup the `max_input_time` timer is armed before POST/GPC parsing (`main/main.c` `php_request_startup`). SIGPROF counts CPU time only, though, and parsing even `post_max_size` of input within `max_input_vars` takes far less than the default 60 s, so it is hard to reach. Keep `max_input_vars` and `max_input_time` at their defaults.
+- `__zend_malloc`/`__zend_realloc` (`Zend/zend_alloc.h`, used for *persistent* allocations) still call `exit(1)` rather than `_exit(1)` when the system `malloc()` fails. 7.4 changed its equivalent. This path is reached only by real system memory exhaustion, not by `memory_limit`, so a request cannot trigger it.
+- `SG(rfc1867_uploaded_files)` is freed but not NULLed in `sapi_deactivate` (7.4 has the same gap). It is harmless unless deactivate runs twice without an activate in between.
 - 5.6 is still EOL with many other unfixed CVEs. This patch is a stopgap, not a reason to stay on 5.6.
 
 ## Behaviour changes to expect after deploying
@@ -55,12 +58,11 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 - `tests/verify.sh`: `base` fails all 3 checks, while `patched` and `Remi+0261` pass all 3.
 - phpt suite (`tests/basic ext/session/tests tests/lang Zend/tests main`, 2141 tests, run serially), patched compared with base. The new failures are 8× `ext/session/tests/rfc1867*.phpt` (upload progress disabled by design) and `tests/lang/bug45392.phpt` (OOM output no longer flushed, by design). Six other session tests also differed (2 newly failing, 4 newly passing), but all 6 passed on both builds in three reruns, so they are flaky (they depend on time and session files).
 - 0261 applies to Remi's -47 tree with line offsets only, no fuzz, and builds cleanly.
-- Real `5.6.40-47.1.el8.remi` RPMs were built with `rpmbuild` (AlmaLinux 8, Patch400 applied at `--fuzz=0`). They were then installed in a clean AlmaLinux 8 container, and stock `-47` was installed the same way as the control. The package set was cli, common, fpm, gd, mbstring, mysqlnd, opcache, pdo, process, soap and xml. Results:
-  - Stock -47 fails all 3 `verify.sh` checks, and 47.1 passes all 3.
-  - Through php-fpm over FastCGI (`cgi-fcgi`):
-    - OOM on stock -47 runs the shutdown function; on 47.1 the worker logs `Fatal error … exited with code 1` and the master respawns it.
-    - Upload progress is written on stock -47 and not written on 47.1.
-  - `php -m` is identical between the two.
+- **Before/after on the real packages: see [`tests/results/`](tests/results/README.md).** Stock Remi `5.6.40-47` and the rebuilt `5.6.40-47.1` (Patch400 at `--fuzz=0`) were each installed in a clean AlmaLinux 8 container and tested through php-fpm:
+  - every security check flips from vulnerable to fixed;
+  - uploads, POST/GET arrays and sessions give byte-identical output;
+  - out of 2,563 phpt tests, exactly the 9 by-design tests change.
+- Independent hunk-by-hunk review against the 7.4 backport: correct-with-gaps. The gaps are listed under "Remaining risk".
 
 ## Applying it
 
