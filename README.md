@@ -53,7 +53,7 @@ The minimal 7.4 backport, and the 5.6 port based on it, take the blunt route:
 Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0261 (`base`), and Remi `php56-php-5.6.40-47` SRPM (95 patches) plus 0261. All were configured with `--disable-all --enable-session --enable-cli --enable-cgi`.
 
 - `tests/verify.sh`: `base` fails all 3 checks, while `patched` and `Remi+0261` pass all 3.
-- phpt suite (`tests/basic ext/session/tests tests/lang Zend/tests main`, 2141 tests, run serially), patched compared with base. The new failures are 8× `ext/session/tests/rfc1867*.phpt` (upload progress disabled by design) and `tests/lang/bug45392.phpt` (OOM output no longer flushed, by design). Four session tests differed in each direction, but they all passed on both builds when rerun three times, so they are flaky.
+- phpt suite (`tests/basic ext/session/tests tests/lang Zend/tests main`, 2141 tests, run serially), patched compared with base. The new failures are 8× `ext/session/tests/rfc1867*.phpt` (upload progress disabled by design) and `tests/lang/bug45392.phpt` (OOM output no longer flushed, by design). Six other session tests also differed (2 newly failing, 4 newly passing), but all 6 passed on both builds in three reruns, so they are flaky (they depend on time and session files).
 - 0261 applies to Remi's -47 tree with line offsets only, no fuzz, and builds cleanly.
 
 ## Applying it
