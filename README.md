@@ -55,6 +55,12 @@ Builds: Sury 5.6.40 tree with patches 1–261 (`patched`), the same tree minus 0
 - `tests/verify.sh`: `base` fails all 3 checks, while `patched` and `Remi+0261` pass all 3.
 - phpt suite (`tests/basic ext/session/tests tests/lang Zend/tests main`, 2141 tests, run serially), patched compared with base. The new failures are 8× `ext/session/tests/rfc1867*.phpt` (upload progress disabled by design) and `tests/lang/bug45392.phpt` (OOM output no longer flushed, by design). Six other session tests also differed (2 newly failing, 4 newly passing), but all 6 passed on both builds in three reruns, so they are flaky (they depend on time and session files).
 - 0261 applies to Remi's -47 tree with line offsets only, no fuzz, and builds cleanly.
+- Real `5.6.40-47.1.el8.remi` RPMs were built with `rpmbuild` (AlmaLinux 8, Patch400 applied at `--fuzz=0`). They were then installed in a clean AlmaLinux 8 container, and stock `-47` was installed the same way as the control. The package set was cli, common, fpm, gd, mbstring, mysqlnd, opcache, pdo, process, soap and xml. Results:
+  - Stock -47 fails all 3 `verify.sh` checks, and 47.1 passes all 3.
+  - Through php-fpm over FastCGI (`cgi-fcgi`):
+    - OOM on stock -47 runs the shutdown function; on 47.1 the worker logs `Fatal error … exited with code 1` and the master respawns it.
+    - Upload progress is written on stock -47 and not written on 47.1.
+  - `php -m` is identical between the two.
 
 ## Applying it
 
