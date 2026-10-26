@@ -1,0 +1,30 @@
+############################################################
+# PHP 5.6 PHP2Shell patch - 3-phase validation
+# host=localhost.localdomain  date=2026-10-26T11:53:01Z
+############################################################
+
+===== PHASE 1: set engine to -47, run BEFORE tests =====
+installed: php56-php-cli-5.6.40-47.el8.remi.x86_64 php56-php-fpm-5.6.40-47.el8.remi.x86_64   fpm=active
+    Fatal error: Allowed memory size of 8388608 bytes exhausted (tried to allocate 100001 bytes) in /tmp/oom.php on line 3
+  Check1 OOM/shutdown      : exit=255 SHUTDOWN-RAN=yes  -> VULNERABLE
+  Check2 multipart 60k hdrs: SCRIPT-RAN=no  -> VULNERABLE
+  Check3 upload-progress   : PROGRESS-WRITTEN session_file=330B  -> VULNERABLE
+  >> PHASE RESULT: C1=VULNERABLE  C2=VULNERABLE  C3=VULNERABLE
+
+===== PHASE 2: patch to 47.1, run AFTER tests =====
+installed: php56-php-cli-5.6.40-47.1.el8.remi.x86_64 php56-php-fpm-5.6.40-47.1.el8.remi.x86_64   fpm=active
+    Fatal error: Allowed memory size of 8388608 bytes exhausted (tried to allocate 100001 bytes) in /tmp/oom.php on line 3
+  Check1 OOM/shutdown      : exit=1 SHUTDOWN-RAN=no  -> FIXED
+  Check2 multipart 60k hdrs: SCRIPT-RAN=yes  -> FIXED
+  Check3 upload-progress   : NO-PROGRESS session_file=0B  -> FIXED
+  >> PHASE RESULT: C1=FIXED  C2=FIXED  C3=FIXED
+
+===== PHASE 3: rollback to -47, run tests again =====
+installed: php56-php-cli-5.6.40-47.el8.remi.x86_64 php56-php-fpm-5.6.40-47.el8.remi.x86_64   fpm=active
+    Fatal error: Allowed memory size of 8388608 bytes exhausted (tried to allocate 100001 bytes) in /tmp/oom.php on line 3
+  Check1 OOM/shutdown      : exit=255 SHUTDOWN-RAN=yes  -> VULNERABLE
+  Check2 multipart 60k hdrs: SCRIPT-RAN=no  -> VULNERABLE
+  Check3 upload-progress   : PROGRESS-WRITTEN session_file=330B  -> VULNERABLE
+  >> PHASE RESULT: C1=VULNERABLE  C2=VULNERABLE  C3=VULNERABLE
+
+===== end 2026-10-26T11:53:18Z  (VM left on -47) =====
